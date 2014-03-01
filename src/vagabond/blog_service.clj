@@ -22,6 +22,4 @@
 
 (defn get-post [slug] #(first (query-posts {:slug slug})))
 
-(defn posts-by-author [author] (do
-                                 (println author)
-                                 #(query-posts {:users.username author})))
+(defn posts-by-author [author] #(query-posts {:users.username author}))
