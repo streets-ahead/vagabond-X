@@ -2,39 +2,32 @@
   (:require [liberator.core :refer [resource defresource]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.adapter.jetty :refer [run-jetty]]      
-            [compojure.core :refer [defroutes ANY GET]]
-            [cheshire.core :refer (generate-string)]
+            [compojure.core :refer [defroutes ANY GET POST]]
             [vagabond.blog_service :refer (all-posts get-post posts-by-author)]))
-
-(defn create-handler [render-html]
-  (fn [ctx] 
-    (let [data (:req-data ctx)]
-      (case (get-in ctx [:representation :media-type])
-        "application/json" (generate-string data)
-        "text/html" (render-html data)))))
 
 (defn create-exists [get-data]
   (fn [ctx] 
     (let [data (get-data)]
-      (if (empty? data)
-        false
-        {:req-data data}))))
+      [(not (empty? data)) {:req-data data}])))
 
 (defn post-handler [ctx] (println "calling post"))
 
-(defn simple-template [data] (str "<h1>" (:myObj data) "</h1>"))
-
 (def route-defaults {
   :available-media-types ["text/html" "application/json"]
-  :handle-ok (create-handler simple-template)})
+  :handle-ok :req-data})
 
-(defresource posts route-defaults
-         :allowed-methods [:post :get]
+(defresource posts-resource route-defaults
+         :allowed-methods [:get]
+         :exists? (create-exists (all-posts))
+         :post! post-handler)
+
+(defresource create-post-resource route-defaults
+         :allowed-methods [:post]
          :exists? (create-exists (all-posts))
          :post! post-handler)
 
 (defresource single-post [slug] route-defaults 
-         :allowed-methods [:put :get]
+         :allowed-methods [:put :get :delete]
          :exists? (create-exists (get-post slug)))
 
 (defresource by-author [author] route-defaults
@@ -42,7 +35,8 @@
          :exists? (create-exists (posts-by-author author)))
 
 (defroutes app
-  (ANY "/posts" [] posts)
+  (GET "/posts" [] posts-resource)
+  (POST "/posts/:slug" [slug] (create-post-resource slug))
   (ANY "/posts/:slug" [slug] (single-post slug))
   (ANY "/posts/author/:author" [author] (by-author author)))
   
