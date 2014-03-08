@@ -36,8 +36,25 @@
 
 (defn posts-by-author [author] (query-posts {:users.username author}))
 
+(defn- conflicting? [new old]
+  (if (not= new old)
+    (not (nil? (get-post new)))
+    false))
+
+(defn- clean-post [post]
+  (select-keys post [:title :body :slug :author]))
+
+(defn update-post [old-slug obj] 
+    (let [slug (create-slug obj)
+          post (clean-post (assoc obj :slug slug))]
+      (when-not (conflicting? slug old-slug)
+        (update posts (set-fields post) (where {:slug old-slug})))))
+
 (defn create-post [obj] 
     (let [slug (create-slug obj)
-        post (assoc obj :slug slug)]
-    (when-not (get-post slug)
-      (insert posts (values post)))))
+          post (clean-post (assoc obj :slug slug))]
+      (when-not (get-post slug)
+        (insert posts (values post)))))
+
+
+
