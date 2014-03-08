@@ -1,6 +1,7 @@
 (ns vagabond.blog_service
   (:require [korma.db :refer (defdb)]
-            [clojure.string])
+            [clojure.string]
+            [digest])
   (:use korma.core))
 
 (defdb db {:classname   "org.sqlite.JDBC"
@@ -22,13 +23,13 @@
 (defentity users (has-many posts {:fk :author}))
 (defentity posts (belongs-to users {:fk :author}))
 
-(def base (-> (select* posts) 
-              (fields :title :body :publish_date :slug) 
-              (with users (fields [:name :author_name] [:username :author]))))
+(def base-posts (-> (select* posts) 
+  (fields :title :body :publish_date :slug) 
+  (with users (fields [:name :author_name] [:username :author]))))
 
 (defn query-posts 
-  ([] (-> base (select)))
-  ([opts] (-> base (where opts) (select))))
+  ([] (-> base-posts (select)))
+  ([opts] (-> base-posts (where opts) (select))))
 
 (defn all-posts [] (query-posts))
 
@@ -45,16 +46,36 @@
   (select-keys post [:title :body :slug :author]))
 
 (defn update-post [old-slug obj] 
-    (let [slug (create-slug obj)
+  (let [slug (create-slug obj)
           post (clean-post (assoc obj :slug slug))]
-      (when-not (conflicting? slug old-slug)
-        (update posts (set-fields post) (where {:slug old-slug})))))
+    (when-not (conflicting? slug old-slug)
+      (update posts (set-fields post) (where {:slug old-slug})))))
 
 (defn create-post [obj] 
-    (let [slug (create-slug obj)
-          post (clean-post (assoc obj :slug slug))]
-      (when-not (get-post slug)
-        (insert posts (values post)))))
+  (let [slug (create-slug obj)
+        post (clean-post (assoc obj :slug slug))]
+    (when-not (get-post slug)
+      (insert posts (values post)))))
+
+(def base-user (-> (select* users) (fields :username :id :name)))
+
+(defn- get-salt [username]
+  (:salt (first (select users (fields :salt) (where {:username username})))))
+
+(defn auth-user [username password]
+  (let [salt (get-salt username)
+        hashpass (digest/sha-256 (str password salt))]
+    (first (-> base-user (where {:username username :password hashpass}) (select)))))
+
+
+
+
+
+
+
+
+
+
 
 
 

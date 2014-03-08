@@ -53,11 +53,26 @@
  :allowed-methods [:get]
  :exists? (create-exists #(blog_service/posts-by-author author)))
 
+(defn select-values [map ks]
+  (reduce #(conj %1 (map %2)) [] ks))
+
+(defresource auth-resource route-defaults
+  :allowed-methods [:post]
+  :available-media-types ["application/json"]
+  :new? false
+  :allowed? (fn [ctx] 
+                (let [args (select-values (get-in ctx [:request :body]) [:username :password])
+                      user (apply blog_service/auth-user args)]
+                  [user, {::user user}]))
+  :post! (fn [{user ::user}]
+           {::req-data {:token "12345"}}))
+
 (defroutes app
   (POST "/posts" [] create-post-resource)
   (ANY "/posts" [] posts-resource)
   (ANY "/posts/:slug" [slug] (single-post slug))
-  (ANY "/posts/author/:author" [author] (by-author author)))
+  (ANY "/posts/author/:author" [author] (by-author author))
+  (ANY "/authenticate" [] auth-resource))
 
 (def handler (wrap-json-body app {:keywords? true}))  
 
