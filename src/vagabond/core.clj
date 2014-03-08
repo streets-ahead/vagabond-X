@@ -1,5 +1,5 @@
 (ns vagabond.core
-  (:require [liberator.core :refer [resource defresource]]
+  (:require [liberator.core :refer [resource defresource by-method]]
     [liberator.representation :refer [ring-response]]
     [ring.middleware.params :refer [wrap-params]]
     [ring.adapter.jetty :refer [run-jetty]]      
@@ -37,13 +37,15 @@
 ; hand post to / to create new posts
 (defresource create-post-resource route-defaults
   :allowed-methods [:post]
-  :authorized? (fn [ctx] {::user {:id 1}})
+  :allowed? (fn [ctx] {::user {:id 1}})
   :new? check-conflict
   :post! (create-modifier #(blog_service/create-post %)))
   
 ; handler for all things /[slug]
 (defresource single-post [slug] route-defaults 
   :allowed-methods [:put :get :delete]
+  :allowed? (fn [ctx] (by-method {:get true
+                                  :any (fn [ctx] {::user {:id 1}})}))
   :exists? (create-exists #(blog_service/get-post slug))
   :can-put-to-missing? false
   :new? false
@@ -70,6 +72,7 @@
 (defroutes app
   (POST "/posts" [] create-post-resource)
   (ANY "/posts" [] posts-resource)
+  (ANY "/posts/" [] posts-resource)
   (ANY "/posts/:slug" [slug] (single-post slug))
   (ANY "/posts/author/:author" [author] (by-author author))
   (ANY "/authenticate" [] auth-resource))
