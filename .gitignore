@@ -6,3 +6,4 @@ pom.xml
 .lein-deps-sum
 target
 resources/public/js
+node_modules
