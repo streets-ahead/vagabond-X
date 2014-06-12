@@ -1,0 +1,9 @@
+{
+  "name": "vagabond-x",
+  "description": "vagabond-x",
+  "version": "0.0.1",
+  "private": true,
+  "devDependencies": {
+    "less": "*"
+  }
+}
